@@ -6,6 +6,7 @@ import os
 import sys
 import random
 import math
+np.set_printoptions(precision=3)
 class reward_estimation:
     def __init__(self,trajectories,states):
         self.states=states
@@ -27,7 +28,8 @@ class reward_estimation:
 
     def Rr(self):
         pass    
-        
+        features = np.zeros(states)
+
         for t in self.trajectories:
             #print(t)
             pos=t[0]#先頭のアドレスを取得
@@ -40,10 +42,24 @@ class reward_estimation:
                         self.probs[pos][a]+=1
                 pos=p
         
+        if True:
+            for i in range(len(self.probs)):
+                if sum(self.probs[i])!=0:
+                    print(i,self.probs[i]/sum(self.probs[i]),sum(self.probs[i]/sum(self.probs[i])))
+        
+        for s in range(len(self.probs)):
+            pass
+            for a in range(len(self.actions_list)):
+                if 0<=s+self.actions_move[a]<1600 and self.probs[s][a]!=0:
+                    features[s+self.actions_move[a]]+=self.probs[s][a]/sum(self.probs[s])
+                
+                else:
+                    print("out of range {0}".format(s+self.actions_move[a]))
+                #print(a)
+        visualization.grid_visualization(features ,states,"Rr","Rr")
         pass
-        for i in range(len(self.probs)):
-            if sum(self.probs[i])!=0:
-                print(i,self.probs[i]/sum(self.probs[i]),sum(self.probs[i]/sum(self.probs[i])))
+        
+
 
     
 def onehot_feature(trajectories,states):
