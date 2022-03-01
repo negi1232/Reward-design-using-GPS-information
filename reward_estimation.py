@@ -29,14 +29,21 @@ class reward_estimation:
         pass    
         
         for t in self.trajectories:
-            print(t)
+            #print(t)
             pos=t[0]#先頭のアドレスを取得
             for p in t[1:]:#[n-1]と[n]を要素としているため
                 #action_listのどの行動をしているかを推定
-                for a in self.actions_move:
+                for a in range(len(self.actions_move)):
                     pass
-                    if p==pos+a:
-                        print("hit!.{0}:{1}".format(a,pos+a))
+                    if p==pos+self.actions_move[a]:
+                        #print("{0}:{1}".format(pos,p))
+                        self.probs[pos][a]+=1
+                pos=p
+        
+        pass
+        for i in range(len(self.probs)):
+            if sum(self.probs[i])!=0:
+                print(i,self.probs[i]/sum(self.probs[i]),sum(self.probs[i]/sum(self.probs[i])))
 
     
 def onehot_feature(trajectories,states):
