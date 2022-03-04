@@ -12,6 +12,7 @@ from tqdm import tqdm
 import os
 
 def import_data(hour):
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
     con = sqlite3.connect('data.db')
     cur = con.cursor()
     #cur.execute('SELECT * FROM expart WHERE "hour" == '+ str(hour))#時間ごとで処理
