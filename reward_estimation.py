@@ -6,7 +6,8 @@ import os
 import sys
 import random
 import math
-np.set_printoptions(precision=3)
+import sqlite3
+#np.set_printoptions(precision=3)
 class reward_estimation:
     def __init__(self,trajectories,states):
         self.states=states
@@ -18,7 +19,6 @@ class reward_estimation:
         self.actions_move=[0,self.apart,-self.apart,+1,-1,self.apart+1,-1*(self.apart-1),self.apart-1,-1*(self.apart+1)]
         #print(self.actions_move)
         self.probs=np.zeros((states, len(self.actions_list)))
-        pass
         if True:
             print("パラメータ")
             for i in range(len(self.actions_list)):
@@ -45,19 +45,46 @@ class reward_estimation:
         if True:
             for i in range(len(self.probs)):
                 if sum(self.probs[i])!=0:
-                    print(i,self.probs[i]/sum(self.probs[i]),sum(self.probs[i]/sum(self.probs[i])))
+                    pass
+                    #print(i,self.probs[i]/sum(self.probs[i]),sum(self.probs[i]/sum(self.probs[i])))
         
         for s in range(len(self.probs)):
             pass
             for a in range(len(self.actions_list)):
-                if 0<=s+self.actions_move[a]<1600 and self.probs[s][a]!=0:
+                if 0<=s+self.actions_move[a]<self.states and self.probs[s][a]!=0:
                     features[s+self.actions_move[a]]+=self.probs[s][a]/sum(self.probs[s])
                 
-                else:
-                    print("out of range {0}".format(s+self.actions_move[a]))
-                #print(a)
-        visualization.grid_visualization(features ,states,"Rr","Rr")
+
+        visualization.grid_visualization(features ,self.states,"Rr","Rr")
+        return features
         pass
+
+
+    def save_features(self,Rr_features,visit_history ,features):
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+        files = os.listdir("./")
+        print(type(files))  # <class 'list'>
+        print(files)   
+        DB_FILE = "data.db"
+        conn = sqlite3.connect(DB_FILE)
+        cur = conn.cursor()
+        c = conn.cursor()
+        try:
+            c.execute('DROP TABLE IF EXISTS Rr')
+        except:
+            pass
+        c.execute('create table if not exists Rr (address,Rr,visit_history,features)')
+        bulktable=list()
+        for i in range(self.states):
+            bulktable.append([i,Rr_features[i],visit_history[i],features[i]])
+            if len(bulktable)>=10000:
+                cur.executemany('INSERT INTO Rr (address,Rr,visit_history,features) values(?, ?, ?, ? )',bulktable)
+                bulktable=list()
+            
+        cur.executemany('INSERT INTO Rr (address,Rr,visit_history,features) values(?, ?, ?, ? )',bulktable)
+
+        conn.commit()
+
         
 
 
@@ -108,5 +135,8 @@ if __name__ == "__main__":
 
     Rr=reward_estimation(trajectories,states)
     print("start Rr")
-    Rr.Rr()
+    #エントロピー最大化を行いほかの状態からの遷移確立の合計を計算
+    Rr_features=Rr.Rr()
 
+    #いったんsqlに保存
+    Rr.save_features(Rr_features,visit_history ,expart_features)
