@@ -16,9 +16,10 @@ def import_data(hour):
     con = sqlite3.connect('data.db')
     cur = con.cursor()
     #cur.execute('SELECT * FROM expart WHERE "hour" == '+ str(hour))#時間ごとで処理
-    cur.execute('SELECT * FROM expart WHERE "year" == 2021 AND "mon" == 5' )#すべてを一括で処理
+    #cur.execute('SELECT * FROM expart WHERE "year" == 2021 AND "mon" == 5' )#すべてを一括で処理
     #cur.execute('SELECT * FROM expart WHERE "year" == 2021 AND "mon" == 5 AND "hour" == 12' )#すべてを一括で処理
-    #cur.execute('SELECT * FROM expart WHERE "year" == 2021 AND "hour" == '+ str(hour) )#すべてを一括で処理
+    
+    cur.execute('SELECT * FROM expart WHERE "year" == 2021 AND "hour" == '+ str(hour) )#すべてを一括で処理
     
     data=cur.fetchall()
     con.close()
@@ -84,10 +85,50 @@ class cal_route:
             self.last_pos= [lat,lon]
             #print([lat,lon])
             #yield lat,lon
-            
+
+def save_reshape_route(trajectories,hour):
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    files = os.listdir("./")
+    print(type(files))  # <class 'list'>
+    print(files)   
+    DB_FILE = "data.db"
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    c = conn.cursor()
+    try:
+        c.execute('DROP TABLE IF EXISTS reshape_route'+str(hour))
+    except:
+        pass
+    c.execute('create table if not exists  reshape_route'+str(hour)+' (trajectories)')
+
+    bulk_data=list()
+    for d in trajectories:
+        bulk_data.append([str(d)])
+    cur.executemany('INSERT INTO reshape_route'+str(hour)+' (trajectories) values(?)',bulk_data)
+
+    conn.commit()
 
 
-def db2trajectory(hour,state):
+def import_reshapedata(hour):
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    con = sqlite3.connect('data.db')
+    cur = con.cursor()
+    
+    cur.execute('SELECT * FROM reshape_route'+str(hour) )#すべてを一括で処理
+    data=cur.fetchall()
+    st=list()
+    for d in data:
+        
+        st.append(eval(str(d[0])))
+    pass
+    con.close()
+    return st
+
+def db2trajectory(hour,state,calc=True):
+
+    if calc==False:
+        trajectory=import_reshapedata(hour)
+        return trajectory,state
     
     z=[35.65, 139.98,35.71, 140.04]#頂点を指定
     delta=z[2]-z[0]#パーティション
@@ -152,16 +193,6 @@ def db2trajectory(hour,state):
                 #if grid[apart-x][y]<=1000:
                 grid[apart-1-x][y]+=1
                 trajectory[-1].append((x * apart + y)-1)
-                if x==0:
-                    pass
-
-                if x==39:
-                    pass
-
-                if y==0:
-                    pass
-                if y==39:
-                    pass
                 
             
             if len(trajectory[-1])==0:
@@ -170,7 +201,7 @@ def db2trajectory(hour,state):
 
 
     
-    
+    save_reshape_route(trajectory,hour)
     return trajectory,apart*apart
     
 #db2trajectory()

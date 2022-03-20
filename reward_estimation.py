@@ -75,8 +75,8 @@ class reward_estimation:
                     #print(s+a,end=",")
                     st+=features[s+a]
                     st1+=1
-            if features[s]==0.0:
-                features[s]=st/st1
+            if features[s]==0.0 and st1!=0:
+                features[s]+=st/st1
 
         visualization.grid_visualization(features ,self.states,"theta"+str(n),"theta"+str(n))
         #f=theta
@@ -100,8 +100,8 @@ class reward_estimation:
     def save_features(self,Rr_features,visit_history ,features,hour):
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         files = os.listdir("./")
-        print(type(files))  # <class 'list'>
-        print(files)   
+        #print(type(files))  # <class 'list'>
+        #print(files)   
         DB_FILE = "data.db"
         conn = sqlite3.connect(DB_FILE)
         cur = conn.cursor()
@@ -143,6 +143,7 @@ def visit_history_features(trajectories,states):
 
     return features#平均訪問回数を返えす
 
+
 if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     
@@ -157,7 +158,7 @@ if __name__ == "__main__":
     except:
         hour=12
     
-    trajectories,states=db2route.db2trajectory(hour,1600)
+    trajectories,states=db2route.db2trajectory(hour,1600,False)
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     os.makedirs('result/'+str(experiment_name)+'/'+str(hour), exist_ok=True)#実験名/時刻でフォルダを作成
     os.makedirs('result/'+str(experiment_name)+'/result', exist_ok=True)#実験名/時刻でフォルダを作成
@@ -174,21 +175,19 @@ if __name__ == "__main__":
     print("start Rr")
     #エントロピー最大化を行いほかの状態からの遷移確立の合計を計算
     Rr_features=Rr.Rr()
+
+    #報酬が０の地点がなくなるまで平均フィルタを適応
     i=0
     while Rr.states-np.count_nonzero(Rr_features)!=0:
         print(Rr.states-np.count_nonzero(Rr_features))
         Rr_features=Rr.moving_average_filter(Rr_features,i)
         visualization.grid_visualization(Rr_features ,Rr.states,"theta"+str(i),"theta"+str(i))
         i+=1
+    
+    #
         
     #いったんsqlに保存
     Rr.save_features(Rr_features,visit_history ,expart_features,hour)
 
-    plt.plot(Rr_features,visit_history,range(Rr.states),label="sin")
-    plt.xlabel("x")
-    plt.ylabel("y")
-    plt.title('sin & cos')
-    plt.legend()
-    plt.show()
     #networkグラフ用のファイルを作成
     #Rr.save_network(hour)
