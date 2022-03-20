@@ -7,6 +7,7 @@ import sys
 import random
 import math
 import sqlite3
+import matplotlib.pyplot as plt
 #np.set_printoptions(precision=3)
 class reward_estimation:
     def __init__(self,trajectories,states):
@@ -58,30 +59,66 @@ class reward_estimation:
         visualization.grid_visualization(features ,self.states,"Rr","Rr")
         return features
         pass
+    
+    
+    def moving_average_filter(self,features,n):
+        #f=features
+        theta=features
+            
+        for s in range(len(features)):
+            #print(f[s],end=":")
+            #if theta[s]==0:
+            st=0
+            st1=0
+            for a in self.actions_move:
+                if 0<=s+a<self.states:
+                    #print(s+a,end=",")
+                    st+=features[s+a]
+                    st1+=1
+            if features[s]==0.0 and st1!=0:
+                features[s]+=st/st1
+
+        visualization.grid_visualization(features ,self.states,"theta"+str(n),"theta"+str(n))
+        #f=theta
+        return features
 
 
-    def save_features(self,Rr_features,visit_history ,features):
+    def save_network(self,hour):
+        f = open('Rr_network'+str(hour)+'.txt', 'w')
+        
+        pass
+        for s in range(self.states ):
+            for i,a in enumerate(self.actions_move):
+                if 0<=s+self.actions_move[i]<self.states:
+                    if self.probs[s][i] != 0:
+                        f.write(str(s)+" "+str(s+a)+" "+str(self.probs[s][i]/sum(self.probs[s]))+'\n')
+                    
+                    else:
+                        f.write(str(s)+" "+str(s+a)+" "+str(self.probs[s][i])+'\n')
+
+
+    def save_features(self,Rr_features,visit_history ,features,hour):
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         files = os.listdir("./")
-        print(type(files))  # <class 'list'>
-        print(files)   
+        #print(type(files))  # <class 'list'>
+        #print(files)   
         DB_FILE = "data.db"
         conn = sqlite3.connect(DB_FILE)
         cur = conn.cursor()
         c = conn.cursor()
         try:
-            c.execute('DROP TABLE IF EXISTS Rr')
+            c.execute('DROP TABLE IF EXISTS Rr'+str(hour))
         except:
             pass
-        c.execute('create table if not exists Rr (address,Rr,visit_history,features)')
+        c.execute('create table if not exists Rr'+str(hour)+' (address,Rr,visit_history,features)')
         bulktable=list()
         for i in range(self.states):
             bulktable.append([i,Rr_features[i],visit_history[i],features[i]])
             if len(bulktable)>=10000:
-                cur.executemany('INSERT INTO Rr (address,Rr,visit_history,features) values(?, ?, ?, ? )',bulktable)
+                cur.executemany('INSERT INTO Rr'+str(hour)+' (address,Rr,visit_history,features) values(?, ?, ?, ? )',bulktable)
                 bulktable=list()
             
-        cur.executemany('INSERT INTO Rr (address,Rr,visit_history,features) values(?, ?, ?, ? )',bulktable)
+        cur.executemany('INSERT INTO Rr'+str(hour)+' (address,Rr,visit_history,features) values(?, ?, ?, ? )',bulktable)
 
         conn.commit()
 
@@ -106,6 +143,7 @@ def visit_history_features(trajectories,states):
 
     return features#平均訪問回数を返えす
 
+
 if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     
@@ -120,7 +158,7 @@ if __name__ == "__main__":
     except:
         hour=12
     
-    trajectories,states=db2route.db2trajectory(hour,1600)
+    trajectories,states=db2route.db2trajectory(hour,1600,False)
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     os.makedirs('result/'+str(experiment_name)+'/'+str(hour), exist_ok=True)#実験名/時刻でフォルダを作成
     os.makedirs('result/'+str(experiment_name)+'/result', exist_ok=True)#実験名/時刻でフォルダを作成
@@ -138,5 +176,18 @@ if __name__ == "__main__":
     #エントロピー最大化を行いほかの状態からの遷移確立の合計を計算
     Rr_features=Rr.Rr()
 
+    #報酬が０の地点がなくなるまで平均フィルタを適応
+    i=0
+    while Rr.states-np.count_nonzero(Rr_features)!=0:
+        print(Rr.states-np.count_nonzero(Rr_features))
+        Rr_features=Rr.moving_average_filter(Rr_features,i)
+        visualization.grid_visualization(Rr_features ,Rr.states,"theta"+str(i),"theta"+str(i))
+        i+=1
+    
+    #
+        
     #いったんsqlに保存
-    Rr.save_features(Rr_features,visit_history ,expart_features)
+    Rr.save_features(Rr_features,visit_history ,expart_features,hour)
+
+    #networkグラフ用のファイルを作成
+    #Rr.save_network(hour)
